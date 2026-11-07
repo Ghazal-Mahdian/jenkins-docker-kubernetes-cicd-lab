@@ -1,0 +1,30 @@
+# OS and editor files
+.DS_Store
+._*
+__MACOSX/
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# Build output (if source is added later)
+target/
+*.class
+*.jar
+*.war
+
+# Secrets and local environment
+.env
+*.env
+*token*
+*.pem
+*.key
+kubeconfig
+.kube/
+
+# Local working material that should not be published
+originals/
+private/
+*.mp4
+*.mov
+*.zip
