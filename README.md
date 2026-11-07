@@ -113,16 +113,6 @@ The only code shown in the screenshots is `App.java`, transcribed in [docs/imple
 - The SonarQube default `admin/admin` login is part of the assignment instructions. Whether it was changed is not shown.
 - Software versions are recorded only where a screenshot shows them (SonarQube 9.9.8, Argo CD 3.3.6).
 
-## Lessons learned
-
-No written reflection was supplied for this project.
-
-**Suggested reflections — for your review before publishing:**
-- A failed SonarQube quality gate did not stop the build. Adding a `waitForQualityGate abortPipeline: true` step (or equivalent) would make code quality a release gate rather than a report.
-- 0.0% coverage alongside a passing unit-test stage suggests no coverage report was sent to SonarQube; a JaCoCo report would close that gap.
-- Deploying the same chart from both Jenkins (Helm) and Argo CD can cause the two tools to fight over cluster state; choosing one deployment path, or having Jenkins update Git and letting Argo CD deploy, is the usual GitOps pattern.
-- The application is a loop that prints and sleeps. It has no HTTP endpoint, which limits what health checks and monitoring can show; it may also be related to the Degraded status.
-- `target/` and `.DS_Store` were committed to the source repository; a `.gitignore` would keep build output and OS files out.
 
 ## Reviewing this repository
 
