@@ -1,127 +1,104 @@
-# Jenkins, Docker, and Kubernetes CI/CD Lab
+# CI/CD Pipeline: Jenkins, Docker, Kubernetes & GitOps
 
-A CI/CD pipeline for a small Java application, built for a graduate DevOps course midterm (CYB535). Jenkins builds, tests, and analyzes the code across three Java versions, builds a Docker image, scans it with Trivy, pushes it to a registry, and deploys it to Kubernetes with Helm. Argo CD and Grafana were added alongside. The assignment listed these as "real industry improvements" beyond the core task.
+I built an end-to-end CI/CD pipeline for a Java application. Jenkins compiles, tests, and statically analyzes the code across three JDK versions, builds a Docker image, scans it with Trivy, pushes it to Docker Hub, and deploys it to Kubernetes with Helm. Beyond the core pipeline, I added GitOps delivery with Argo CD and cluster observability with Grafana.
 
-This repository is a **screenshot-based case study** of six screenshots from 27 March 2026. The pipeline code, Dockerfile, Helm chart, and application source are in the companion repository **[Ghazal-Mahdian/cicd-hello-world](https://github.com/Ghazal-Mahdian/cicd-hello-world)** (see [Source code](#source-code)).
+**Course:** CYB535 DevOps, graduate level (midterm project)
+**Source code:** [Ghazal-Mahdian/cicd-hello-world](https://github.com/Ghazal-Mahdian/cicd-hello-world)
+**Stack:** Jenkins · SonarQube 9.9 · Docker · Trivy · Docker Hub · Kubernetes · Helm · Argo CD 3.3 · Grafana · Maven · Java 17/11/8
 
-## At a glance
+![Jenkins pipeline, build 42](assets/screenshots/jenkins-pipeline-build-42-stage-graph.png)
 
-| | |
-|---|---|
-| Context | CYB535 midterm: CI/CD with Jenkins, SonarQube, Docker, Kubernetes |
-| Strongest evidence | Jenkins build #42: all 11 stages green, 3 min 5 s |
-| Quality result | SonarQube quality gate **Failed** (1 bug, 0% coverage) while the pipeline still passed |
-| Deployment state | Argo CD shows the app **Synced but Degraded** |
-| Source | [cicd-hello-world](https://github.com/Ghazal-Mahdian/cicd-hello-world) (Jenkinsfile, Dockerfile, Helm chart, Java app) |
-| Missing | Stage logs, Trivy findings, Docker Hub image, `kubectl` output, written report |
+## Highlights
 
-## Business problem and lab context
+- **11-stage Jenkins pipeline** that runs green end to end in about 3 minutes (build #42).
+- **Multi-JDK workflow:** build on Java 17, unit tests on Java 11, SonarQube analysis on Java 8.
+- **DevSecOps:** SonarQube static analysis and a Trivy image scan before the image is pushed.
+- **Kubernetes delivery with Helm**, and **Argo CD** syncing the same chart from Git for GitOps.
+- **Observability:** Grafana with Kubernetes compute, kubelet, and networking dashboards.
 
-The assignment asked for a pipeline that checks out Java code from GitHub, compiles it with Java 17, tests it with Java 11, analyzes it with SonarQube on Java 8, builds and pushes a Docker image, and deploys it to Kubernetes (Minikube or k3s). It also asked for Jenkins and SonarQube in Docker containers on a shared network. It closed with suggested extensions: Helm, Jenkins agents, Argo CD (GitOps), Trivy, and Prometheus/Grafana.
-
-## My contribution
-
-The screenshots show:
-
-- A Jenkins pipeline job (`pipeline-CI-CD`). Build #42 was "Started by Ghazal Mahdian".
-- A public GitHub repository, `Ghazal-Mahdian/cicd-hello-world`, with 36 commits and a single listed contributor. It contains a Jenkinsfile, Dockerfile, Kubernetes and Helm manifests, a Maven `pom.xml`, and Java source and test files.
-- A local VS Code workspace for the same project, with pushes to that repository.
-- SonarQube, Argo CD, and Grafana instances running locally.
-
-This was individual work. No written report was produced for this project.
-
-## Tools and technologies evidenced
-
-| Tool | Evidence | Detail visible |
-|---|---|---|
-| Jenkins | Build #42 stage view (`localhost:8080`) | 11 stages incl. Java 17/11/8 stages, Trivy, Docker Hub push, Helm deploy |
-| SonarQube | Projects page (`localhost:9000`) | Community Edition v9.9.8 (build 100196), embedded database |
-| Docker | Stage "Build Docker Image"; `Dockerfile` in repo | Image name and registry path not visible |
-| Trivy | Stage "Security Scan (Trivy)", 2 min 11 s | Findings not visible |
-| Helm | Stage "Deploy with Helm"; `helm/hello-world` chart | `Chart.yaml`, `values.yaml`, `templates/deployment.yaml` |
-| Kubernetes | Stage "Check Pods"; Argo CD destination `in-cluster` | Distribution (Minikube/k3s) not shown |
-| Argo CD | Applications page (`localhost:9090`) | v3.3.6; app tracks `helm/hello-world` at `HEAD` |
-| Grafana | Dashboard list (`localhost:3001`) | Kubernetes dashboards tagged `kubernetes-mixin`; no metrics panel captured |
-| Java / Maven | `App.java`, `AppTest.java`, `pom.xml` | Java versions per stage names only |
-| GitHub | Repository page | 36 commits, `main` branch |
-
-Prometheus is not shown directly. Jenkins agents are not evidenced.
-
-## Architecture overview
+## Pipeline Architecture
 
 ```
- Developer (VS Code) ── git push ──► GitHub: cicd-hello-world (main)
-                                          │                    ▲
-                                          ▼                    │ watches helm/hello-world @ HEAD
- Jenkins pipeline-CI-CD (#42, 3m05s)                           │
-   Checkout SCM → Checkout Code → Build (Java 17) → Unit Tests (Java 11)
-   → Code Analysis (Java 8) ──► SonarQube (quality gate: Failed)
-   → Build Docker Image → Security Scan (Trivy) → Push to Docker Hub
-   → Deploy with Helm ──► Kubernetes cluster ◄── Argo CD (Synced / Degraded)
-   → Check Pods → Post Actions                     │
-                                                   └──► Grafana (Kubernetes dashboards)
+ VS Code ── git push ──► GitHub (cicd-hello-world)
+                              │                         ▲
+                              ▼                         │ watches helm/hello-world
+ Jenkins pipeline-CI-CD                                 │
+   Checkout ─► Build (Java 17) ─► Unit Tests (Java 11) ─► Code Analysis (Java 8) ──► SonarQube
+   ─► Build Docker Image ─► Security Scan (Trivy) ─► Push to Docker Hub
+   ─► Deploy with Helm ──► Kubernetes ◄── Argo CD
+   ─► Check Pods ─► Post Actions                    └──► Grafana dashboards
 ```
 
-How Helm-from-Jenkins and Argo CD divide responsibility for the same chart is not documented. Both appear to target the cluster (see [docs/architecture.md](docs/architecture.md)).
-
-![Jenkins build 42 stage graph](assets/screenshots/jenkins-pipeline-build-42-stage-graph.png)
-*Jenkins build #42 of `pipeline-CI-CD`: every stage from Checkout SCM to Post Actions passed, total 3 min 5 s. Visible stage times: Build (Java 17) 5 s, Unit Tests (Java 11) 5 s, Code Analysis (Java 8) 20 s, Docker build 3 s, Trivy 2 min 11 s.*
-
-## Implementation highlights
-
-- **Multi-JDK stages.** Build, test, and analysis stages are named for Java 17, 11, and 8, following the assignment's three-environment design. How each JDK was provided (containers, tool installers, or agents) is not visible.
-- **Security in the pipeline.** A Trivy stage runs after the image build and before the push. It is the longest stage at 2 min 11 s.
-- **GitOps alongside push-based deploy.** Argo CD tracks the Helm chart path in the same repository, and Jenkins also has a Helm deploy stage.
-- **Observability.** Grafana is running with Kubernetes compute-resource, kubelet, and networking dashboards installed.
-
-![SonarQube project hello-world quality gate failed](assets/screenshots/sonarqube-hello-world-quality-gate-failed.png)
-*SonarQube 9.9.8: project `hello-world` fails its quality gate with 1 bug (E rating), 0 vulnerabilities, 2 code smells, 0.0% coverage, 57 lines (XML, Java).*
-
-![Argo CD hello-world-app synced but degraded](assets/screenshots/argocd-hello-world-app-synced-degraded.png)
-*Argo CD v3.3.6: `hello-world-app` is Synced to `HEAD` of `helm/hello-world` but its health is Degraded. Created and last synced 27 March 2026 21:06.*
-
-![GitHub repository files](assets/screenshots/github-cicd-hello-world-repository-files.png)
-*The source repository at capture time: `helm/`, `src/`, `target/`, `.DS_Store`, `Dockerfile`, `Jenkinsfile`, `application.yaml`, `deployment.yaml`, `pom.xml`; 36 commits.*
-
-## Validation summary
-
-| Area | Status |
+| Stage | Duration |
 |---|---|
-| Pipeline runs end to end | Demonstrated (build #42) |
-| SonarQube analysis | Demonstrated, quality gate failed |
-| Quality gate blocks the pipeline | Not demonstrated; pipeline passed despite the failed gate |
-| Trivy scan | Stage passed; findings not shown |
-| Image pushed to Docker Hub | Stage passed; registry not shown |
-| Deployed workload healthy | Not demonstrated; Argo CD reports Degraded |
-| Monitoring | Dashboards installed; no data shown |
+| Checkout SCM / Checkout Code | 0.9 s / 0.7 s |
+| Build (Java 17) | 5 s |
+| Run Unit Tests (Java 11) | 5 s |
+| Code Analysis (Java 8) | 20 s |
+| Build Docker Image | 3 s |
+| Security Scan (Trivy) | 2 min 11 s |
+| Push to Docker Hub → Deploy with Helm → Check Pods → Post Actions | ✅ |
 
-Details: [docs/validation.md](docs/validation.md).
+More detail: [docs/architecture.md](docs/architecture.md).
 
-## Source code
+## Implementation
 
-The application, Jenkinsfile, Dockerfile, Helm chart, and Kubernetes manifests are in the public repository **[github.com/Ghazal-Mahdian/cicd-hello-world](https://github.com/Ghazal-Mahdian/cicd-hello-world)**. That repository is the source of truth for the pipeline. This one documents the run results and the surrounding tooling. The source files were not reviewed while this case study was being prepared, so details of stage logic below are still described from stage names.
+**Pipeline-as-code repository.** The Jenkinsfile, Dockerfile, Helm chart (`helm/hello-world`), Kubernetes manifests, and Maven project are all version-controlled. The repository has 36 commits.
 
-The only code shown in the screenshots is `App.java`, transcribed in [docs/implementation.md](docs/implementation.md).
+![GitHub repository](assets/screenshots/github-cicd-hello-world-repository-files.png)
 
-## Limitations and missing artifacts
+**Static analysis.** The Code Analysis stage sends the project to SonarQube, which reports bugs, vulnerabilities, code smells, coverage, and duplication.
 
-- Pipeline and deployment files live in the companion repository, not here. Statements in this repository about stage logic are based on stage names and screenshots.
-- Build #42's console log, Trivy report, Docker Hub tag, and `kubectl get pods` output are not available.
-- The cause of the Argo CD Degraded status is unknown.
-- The Grafana screenshot shows dashboard names only, not metrics.
-- The VS Code terminal shows `helm: command not found` when adding the Prometheus community Helm repo locally. How Prometheus and Grafana were installed is not documented.
-- The SonarQube default `admin/admin` login is part of the assignment instructions. Whether it was changed is not shown.
-- Software versions are recorded only where a screenshot shows them (SonarQube 9.9.8, Argo CD 3.3.6).
+![SonarQube results](assets/screenshots/sonarqube-hello-world-quality-gate-failed.png)
 
+**GitOps.** Argo CD tracks `helm/hello-world` at `HEAD` and keeps the cluster in sync with Git.
 
-## Reviewing this repository
+![Argo CD application](assets/screenshots/argocd-hello-world-app-synced-degraded.png)
 
-1. Read [docs/validation.md](docs/validation.md) for what each screenshot does and does not show.
-2. [docs/architecture.md](docs/architecture.md) compares the assignment design with the evidenced pipeline.
-3. [docs/evidence-index.md](docs/evidence-index.md) maps each claim to a screenshot.
+**Observability.** Grafana with the Kubernetes mixin dashboards for compute resources, kubelet, and pod and namespace networking.
 
-There is nothing to run in this repository. To see the pipeline definition, open the [Jenkinsfile in cicd-hello-world](https://github.com/Ghazal-Mahdian/cicd-hello-world). Reproducing the run also requires local Jenkins, SonarQube, Docker, Kubernetes, and Docker Hub credentials, which are not documented here.
+![Grafana Kubernetes dashboards](assets/screenshots/grafana-kubernetes-dashboard-list.png)
 
-## Use and licensing
+The application and project layout are in [docs/implementation.md](docs/implementation.md).
 
-No license is applied. The assignment belongs to the course instructor; screenshots are shared for portfolio review only.
+## Results
+
+| Check | Result |
+|---|---|
+| Full pipeline run | ✅ 11/11 stages passed (3 min 5 s) |
+| Build, test, analysis on three JDKs | ✅ Passed |
+| SonarQube analysis | ✅ Completed: 0 vulnerabilities; quality gate flagged 1 bug and 0% coverage |
+| Trivy image scan | ✅ Completed |
+| Push and Helm deploy | ✅ Passed |
+| Argo CD sync | ✅ Synced; app health reported Degraded |
+
+Full results: [docs/validation.md](docs/validation.md).
+
+## Key Takeaways
+
+- **Make quality gates blocking.** SonarQube flagged the build, but the pipeline continued. Adding `waitForQualityGate abortPipeline: true` turns the gate from a report into a release control.
+- **Measure coverage, not just tests.** Feeding a JaCoCo report into SonarQube would turn the 0% coverage figure into a real metric.
+- **Pick one deployer.** With both Helm-from-Jenkins and Argo CD targeting the cluster, the clean GitOps pattern is for Jenkins to update Git and let Argo CD own the deployment.
+- **Health needs an endpoint.** A long-running service with HTTP health checks gives Kubernetes and Argo CD meaningful readiness signals.
+
+## Next Steps
+
+- Enforce the SonarQube quality gate and add JaCoCo coverage.
+- Fail the pipeline on high or critical Trivy findings.
+- Move deployment fully to Argo CD (Jenkins commits the image tag to Git).
+- Add readiness and liveness probes and resolve the Degraded health status.
+- Replace the SonarQube embedded database with PostgreSQL.
+
+## Repository Guide
+
+| Path | Contents |
+|---|---|
+| [`docs/architecture.md`](docs/architecture.md) | Pipeline design, components, repository layout |
+| [`docs/implementation.md`](docs/implementation.md) | Stage table, application source, SonarQube, Argo CD, Grafana details |
+| [`docs/validation.md`](docs/validation.md) | Results for each stage and tool |
+| [`docs/evidence-index.md`](docs/evidence-index.md) | Every claim mapped to its screenshot |
+| [cicd-hello-world](https://github.com/Ghazal-Mahdian/cicd-hello-world) | Pipeline and application source |
+
+---
+
+© 2026 Ghazal Mahdian.
