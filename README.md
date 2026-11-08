@@ -2,7 +2,6 @@
 
 I built an end-to-end CI/CD pipeline for a Java application. Jenkins compiles, tests, and statically analyzes the code across three JDK versions, builds a Docker image, scans it with Trivy, pushes it to Docker Hub, and deploys it to Kubernetes with Helm. Beyond the core pipeline, I added GitOps delivery with Argo CD and cluster observability with Grafana.
 
-**Course:** CYB535 DevOps, graduate level (midterm project)
 **Source code:** [Ghazal-Mahdian/cicd-hello-world](https://github.com/Ghazal-Mahdian/cicd-hello-world)
 **Stack:** Jenkins · SonarQube 9.9 · Docker · Trivy · Docker Hub · Kubernetes · Helm · Argo CD 3.3 · Grafana · Maven · Java 17/11/8
 
